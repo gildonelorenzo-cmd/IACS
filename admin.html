@@ -1,1 +1,107 @@
 # The Admin Panel page
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <script>
+        // Security Gate: Redirect immediately if not authenticated via password form
+        if (sessionStorage.getItem("admin_auth") !== "true") {
+            window.location.href = "index.html";
+        }
+    </script>
+
+    <div class="container">
+        <h2>Admin Management Panel</h2>
+        <button onclick="sessionStorage.clear(); window.location.href='index.html';" style="float: right; margin-top: -40px;">Logout</button>
+        <hr>
+
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>House</th>
+                    <th>Score (Numbers)</th>
+                    <th>Optional Note</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody id="admin-table-body">
+                </tbody>
+        </table>
+
+        <button onclick="saveToFirebase()" class="btn save-btn">Save & Publish</button>
+        <a href="admin.html" class="btn discard-btn">Discard Changes</a>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const houses = ["Acrobats", "Brave Hearts", "Druids", "Quicksilvers"];
+
+        // Initialize table values from Firebase live state
+        database.ref('houses').once('value').then((snapshot) => {
+            const data = snapshot.val() || {};
+            let tableRows = "";
+
+            houses.forEach(house => {
+                const houseData = data[house] || { score: 0, note: "", showNote: false };
+                const isChecked = houseData.showNote ? "checked" : "";
+                const displayStyle = houseData.showNote ? "inline-block" : "none";
+
+                tableRows += `
+                    <tr>
+                        <td><strong>${house}</strong></td>
+                        <td><input type="number" id="score_${house}" value="${houseData.score}" required></td>
+                        <td><input type="checkbox" id="check_${house}" ${isChecked} onclick="toggleNoteField('${house}')"></td>
+                        <td><input type="text" id="note_${house}" value="${houseData.note}" placeholder="Details..." style="display: ${displayStyle};"></td>
+                    </tr>
+                `;
+            });
+            document.getElementById('admin-table-body').innerHTML = tableRows;
+        });
+
+        function toggleNoteField(house) {
+            const checkbox = document.getElementById(`check_${house}`);
+            const noteField = document.getElementById(`note_${house}`);
+            noteField.style.display = checkbox.checked ? "inline-block" : "none";
+        }
+
+        function saveToFirebase() {
+            let updates = {};
+            houses.forEach(house => {
+                const scoreValue = parseInt(document.getElementById(`score_${house}`).value) || 0;
+                const noteValue = document.getElementById(`note_${house}`).value;
+                const showNoteValue = document.getElementById(`check_${house}`).checked;
+
+                updates[`/houses/${house}`] = {
+                    score: scoreValue,
+                    note: noteValue,
+                    showNote: showNoteValue
+                };
+            });
+
+            database.ref().update(updates).then(() => {
+                alert("Firebase database updated! Leaderboard refreshed.");
+            }).catch(error => {
+                alert("Error saving data: " + error.message);
+            });
+        }
+    </script>
+</body>
+</html>
