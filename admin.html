@@ -1,40 +1,132 @@
-# The Admin Panel page
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel</title>
+    <title>Sports Day IA - Admin Panel</title>
     <link rel="stylesheet" href="style.css">
+    
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
 <body>
     <script>
-        // Security Gate: Redirect immediately if not authenticated via password form
+        // CLIENT-SIDE SECURITY GATE:
+        // Redirect immediately if the admin flag isn't set in browser session memory
         if (sessionStorage.getItem("admin_auth") !== "true") {
-            window.location.href = "index.html";
+            window.location.href = "index.html"; // Adjust to your actual Home Page path
         }
     </script>
 
-    <div class="container">
-        <h2>Admin Management Panel</h2>
-        <button onclick="sessionStorage.clear(); window.location.href='index.html';" style="float: right; margin-top: -40px;">Logout</button>
+    <div class="admin-interface container">
+        <header>
+            <span id="admin-icon" class="green-text">○</span>
+            <h1 class="green-text">ADMIN Panel</h1>
+        </header>
         <hr>
 
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>House</th>
-                    <th>Score (Numbers)</th>
-                    <th>Optional Note</th>
-                    <th>Notes</th>
-                </tr>
-            </thead>
-            <tbody id="admin-table-body">
-                </tbody>
-        </table>
+        <form id="admin-form">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="label-col">Team / House</th>
+                        <th class="score-col">SCORES<br><span class="constraint red-text">(Only Num)</span></th>
+                        <th class="checkbox-col">Optional?<br><span class="constraint green-text">(Check)</span></th>
+                        <th class="note-col">NOTES<br><span class="constraint red-text">(Alpha/Num)</span></th>
+                    </tr>
+                </thead>
+                <tbody id="admin-table-body">
+                    </tbody>
+            </table>
 
+            <div class="form-actions">
+                <a href="index.html" class="btn discard-btn">DISCARD Changes</a>
+                <button type="submit" class="btn save-btn">SAVE & Publish</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Paste your unique Firebase Config Object here
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            // ... the rest of the config
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const teams = ["Quicksilvers", "Acrobats", "Druids", "Brave Hearts"];
+
+        // 1. Setup the table with real-time data on page load
+        database.ref('houses').once('value').then((snapshot) => {
+            const data = snapshot.val() || {};
+            let tableRows = "";
+
+            teams.forEach(team => {
+                // Fetch existing data for each team or set defaults
+                const houseData = data[team] || { score: 0, note: "", showNote: false };
+                const isChecked = houseData.showNote ? "checked" : "";
+                const displayStyle = houseData.showNote ? "inline-block" : "none"; // Hide notes by default
+
+                tableRows += `
+                    <tr>
+                        <td><strong>${team}</strong></td>
+                        <td>
+                            <input type="number" id="score_${team}" value="${houseData.score}" pattern="[0-9]*" required>
+                        </td>
+                        <td>
+                            <input type="checkbox" id="check_${team}" ${isChecked} onclick="toggleNoteField('${team}')">
+                        </td>
+                        <td>
+                            <input type="text" id="note_${team}" value="${houseData.note}" placeholder="Details..." style="display: ${displayStyle};">
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('admin-table-body').innerHTML = tableRows;
+        });
+
+        // 2. Javascript Logic: Manage Note Field Contextual Display
+        // This makes the text area 'Activate only when checkbox is ticked'
+        function toggleNoteField(teamName) {
+            const checkbox = document.getElementById(`check_${teamName}`);
+            const noteField = document.getElementById(`note_${teamName}`);
+            
+            // If checked, show the note input; otherwise, hide it.
+            noteField.style.display = checkbox.checked ? "inline-block" : "none";
+        }
+
+        // 3. Save Function: Updates Firebase directly
+        document.getElementById('admin-form').addEventListener('submit', function(e) {
+            e.preventDefault(); // Stop standard HTML form submission
+            let updates = {};
+
+            teams.forEach(team => {
+                const scoreValue = parseInt(document.getElementById(`score_${team}`).value) || 0;
+                const noteValue = document.getElementById(`note_${team}`).value;
+                const showNoteValue = document.getElementById(`check_${team}`).checked;
+
+                // Structure updates dynamically for Firebase bulk write
+                updates[`/houses/${team}`] = {
+                    score: scoreValue,
+                    note: noteValue,
+                    showNote: showNoteValue
+                };
+            });
+
+            // Write all changes simultaneously (bulk update)
+            database.ref().update(updates).then(() => {
+                alert("Data Published Successfully to Firebase! Leaderboard is updating.");
+            }).catch(error => {
+                alert("Error saving data to database: " + error.message);
+            });
+        });
+    </script>
+</body>
+</html>
         <button onclick="saveToFirebase()" class="btn save-btn">Save & Publish</button>
         <a href="admin.html" class="btn discard-btn">Discard Changes</a>
     </div>
