@@ -1,4 +1,33 @@
 # The Home Page (with Admin password popup)
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smiling Sports Day 2026 - Home</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Smiling Sports Day 2026</h1>
+        <h2>Main Class: Score Board</h2>
+        <hr>
+        
+        <a href="leaderboard.html" class="btn leaderboard-btn">Leader Board</a>
+        <button onclick="checkPassword()" class="btn admin-btn">Admin Panel</button>
+    </div>
 
-
+    <script>
+        function checkPassword() {
+            const password = prompt("Please enter the Admin Password:");
+            if (password === "SmilingSports2026") {
+                // Save a temporary flag in the browser memory so admin stays logged in
+                sessionStorage.setItem("admin_auth", "true");
+                window.location.href = "admin.html";
+            } else if (password !== null) {
+                alert("Incorrect Password!");
+            }
+        }
+    </script>
+</body>
+</html>
